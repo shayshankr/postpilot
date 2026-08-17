@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { config } from "../config";
 import { linkedinAdapter } from "../linkedin/linkedinAdapter";
 import { saveLinkedInToken, getLinkedInToken } from "../db/tokens";
-import { listPosts, updateScheduledPostContent } from "../db/posts";
+import { listPosts, updateScheduledPostContent, skipPost } from "../db/posts";
 import { getLatestMetricsForPost } from "../db/metrics";
 import { recordManualMetrics } from "../analytics/collector";
 import { compileDailyReport } from "../reports/dailyReport";
@@ -15,6 +15,7 @@ const pendingStates = new Set<string>();
 export function createServer() {
   const app = express();
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true })); // for plain HTML <form> posts from /dashboard
 
   app.get("/", (_req, res) => {
     const token = getLinkedInToken();
@@ -64,6 +65,30 @@ export function createServer() {
 
   app.get("/dashboard", (_req, res) => {
     res.type("html").send(renderDashboard());
+  });
+
+  // Plain <form>-friendly versions of the JSON API below, for the /dashboard page —
+  // these redirect back to /dashboard instead of returning JSON.
+  app.post("/dashboard/posts/:id/skip", (req, res) => {
+    const postId = Number(req.params.id);
+    if (Number.isInteger(postId)) skipPost(postId);
+    res.redirect("/dashboard");
+  });
+
+  app.post("/dashboard/posts/:id/metrics", (req, res) => {
+    const postId = Number(req.params.id);
+    if (Number.isInteger(postId)) {
+      const toNum = (v: unknown) => (v === undefined || v === "" ? null : Number(v));
+      const { impressions, likes, comments, reposts, clicks } = req.body ?? {};
+      recordManualMetrics(postId, {
+        impressions: toNum(impressions),
+        likes: toNum(likes),
+        comments: toNum(comments),
+        reposts: toNum(reposts),
+        clicks: toNum(clicks),
+      });
+    }
+    res.redirect("/dashboard");
   });
 
   app.get("/api/posts", (req, res) => {

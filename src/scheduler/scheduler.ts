@@ -8,6 +8,7 @@ import {
   getDuePosts,
   markPosted,
   markFailed,
+  recordPublishAttemptFailure,
   listPosts,
   reschedulePost,
 } from "../db/posts";
@@ -100,6 +101,13 @@ export function dedupeScheduledSlots(): { moved: Array<{ id: number; from: strin
   return { moved };
 }
 
+// A failed publish isn't given up on immediately — the post stays 'scheduled' and the
+// next minute's cron tick tries again, up to this many attempts. This piggybacks on the
+// existing per-minute cron as the retry cadence instead of blocking with an in-process
+// sleep, so a transient LinkedIn API blip (rate limit, momentary 5xx) doesn't need a
+// human to notice and manually retry.
+const MAX_PUBLISH_ATTEMPTS = 3;
+
 async function publishDuePosts() {
   const due = getDuePosts(new Date().toISOString());
   if (due.length === 0) return;
@@ -116,8 +124,14 @@ async function publishDuePosts() {
       markPosted(post.id, result.externalId, new Date().toISOString());
       console.log(`[scheduler] published post #${post.id} -> ${result.externalId}`);
     } catch (err: any) {
-      markFailed(post.id, err?.message ?? String(err));
-      console.error(`[scheduler] failed to publish post #${post.id}:`, err?.message ?? err);
+      const message = err?.message ?? String(err);
+      const attempts = recordPublishAttemptFailure(post.id, message);
+      if (attempts >= MAX_PUBLISH_ATTEMPTS) {
+        markFailed(post.id, `${message} (gave up after ${attempts} attempts)`);
+        console.error(`[scheduler] post #${post.id} failed permanently after ${attempts} attempts:`, message);
+      } else {
+        console.error(`[scheduler] post #${post.id} attempt ${attempts}/${MAX_PUBLISH_ATTEMPTS} failed, will retry next minute:`, message);
+      }
     }
   }
 }

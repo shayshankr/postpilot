@@ -1,4 +1,4 @@
-export type PostStatus = "draft" | "scheduled" | "posted" | "failed";
+export type PostStatus = "draft" | "scheduled" | "posted" | "failed" | "skipped";
 
 export interface PostRecord {
   id: number;
@@ -9,6 +9,7 @@ export interface PostRecord {
   postedAt: string | null;
   linkedinPostUrn: string | null;
   failureReason: string | null;
+  retryCount: number;
   createdAt: string;
 }
 

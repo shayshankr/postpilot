@@ -11,6 +11,7 @@ function rowToPost(row: any): PostRecord {
     postedAt: row.posted_at,
     linkedinPostUrn: row.linkedin_post_urn,
     failureReason: row.failure_reason,
+    retryCount: row.retry_count,
     createdAt: row.created_at,
   };
 }
@@ -67,6 +68,18 @@ export function markPosted(id: number, urn: string, postedAtIso: string) {
 
 export function markFailed(id: number, reason: string) {
   db.prepare(`UPDATE posts SET status = 'failed', failure_reason = ? WHERE id = ?`).run(reason, id);
+}
+
+/** Records a failed publish attempt without giving up yet. Returns the new attempt count. */
+export function recordPublishAttemptFailure(id: number, reason: string): number {
+  db.prepare(`UPDATE posts SET retry_count = retry_count + 1, failure_reason = ? WHERE id = ?`).run(reason, id);
+  return getPost(id)!.retryCount;
+}
+
+/** Only allowed on posts still in 'scheduled' status. */
+export function skipPost(id: number): boolean {
+  const info = db.prepare(`UPDATE posts SET status = 'skipped' WHERE id = ? AND status = 'scheduled'`).run(id);
+  return info.changes > 0;
 }
 
 export function getPostedInRange(startIso: string, endIso: string): PostRecord[] {

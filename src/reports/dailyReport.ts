@@ -5,6 +5,7 @@ import { config } from "../config";
 import { getPostedInRange } from "../db/posts";
 import { getLatestMetricsForPost, getTopPerformingPosts, getPillarAverageScores } from "../db/metrics";
 import { collectApiMetrics } from "../analytics/collector";
+import { getTokenExpiryStatus } from "../db/tokens";
 
 const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
 const REPORT_MODEL = process.env.CONTENT_MODEL || "claude-opus-5";
@@ -73,9 +74,13 @@ export async function compileDailyReport(forDate: Date = new Date()): Promise<st
     narrative = `(report narrative generation failed: ${err instanceof Error ? err.message : String(err)})`;
   }
 
+  const tokenStatus = getTokenExpiryStatus();
+  const tokenWarningBlock = tokenStatus?.warning ? [`⚠️ ${tokenStatus.warning}`, ""] : [];
+
   const report = [
     `# Daily LinkedIn Report — ${end.toISOString().slice(0, 10)}`,
     "",
+    ...tokenWarningBlock,
     narrative,
     "",
     "## Posts in this window",

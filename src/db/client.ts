@@ -49,3 +49,10 @@ CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);
 CREATE INDEX IF NOT EXISTS idx_posts_scheduled_for ON posts(scheduled_for);
 CREATE INDEX IF NOT EXISTS idx_metrics_post_id ON post_metrics(post_id);
 `);
+
+// Lightweight migration: add retry_count if this DB predates it. SQLite has no
+// "ADD COLUMN IF NOT EXISTS", so check pragma table_info first.
+const postsColumns = db.prepare(`PRAGMA table_info(posts)`).all() as Array<{ name: string }>;
+if (!postsColumns.some((c) => c.name === "retry_count")) {
+  db.exec(`ALTER TABLE posts ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0`);
+}

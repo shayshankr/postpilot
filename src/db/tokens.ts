@@ -30,3 +30,31 @@ export function getLinkedInToken(): OAuthTokenRecord | undefined {
   const row = db.prepare(`SELECT * FROM oauth_tokens WHERE provider = 'linkedin' ORDER BY id DESC LIMIT 1`).get();
   return row ? rowToToken(row) : undefined;
 }
+
+const EXPIRY_WARNING_WINDOW_DAYS = 7;
+
+export interface TokenExpiryStatus {
+  expiresAt: string;
+  daysRemaining: number;
+  expired: boolean;
+  warning: string | null;
+}
+
+/** Null if no LinkedIn account is connected at all. */
+export function getTokenExpiryStatus(): TokenExpiryStatus | null {
+  const token = getLinkedInToken();
+  if (!token) return null;
+
+  const msRemaining = new Date(token.expiresAt).getTime() - Date.now();
+  const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+  const expired = daysRemaining <= 0;
+
+  let warning: string | null = null;
+  if (expired) {
+    warning = `LinkedIn access token expired ${Math.abs(daysRemaining)} day(s) ago. Posts will fail until you reconnect at /auth/linkedin.`;
+  } else if (daysRemaining <= EXPIRY_WARNING_WINDOW_DAYS) {
+    warning = `LinkedIn access token expires in ${daysRemaining} day(s) (${token.expiresAt}). Reconnect at /auth/linkedin before then to avoid a gap in posting.`;
+  }
+
+  return { expiresAt: token.expiresAt, daysRemaining, expired, warning };
+}
