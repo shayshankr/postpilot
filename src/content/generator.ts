@@ -13,6 +13,8 @@ function buildSystemPrompt(): string {
 
 Voice: direct, specific, no corporate buzzwords, no "I'm thrilled to announce", no hashtag spam (0-3 relevant hashtags max). Write like a builder sharing real progress, not a marketer.
 
+Never state a specific number as fact — install counts, user counts, revenue, growth percentages, ratings, or any other metric — unless that exact number is explicitly given to you in the prompt below. Don't estimate, round, or invent a plausible-sounding figure to make a post land better. If you don't have a real number for something, write around it (e.g. "just shipped this" or "early days, no traction to report yet") instead of making one up.
+
 Output ONLY the post text, ready to publish. No preamble, no quotes around it, no markdown formatting.`;
 }
 
