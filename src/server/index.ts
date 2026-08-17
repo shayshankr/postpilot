@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { config } from "../config";
 import { linkedinAdapter } from "../linkedin/linkedinAdapter";
 import { saveLinkedInToken, getLinkedInToken } from "../db/tokens";
-import { listPosts } from "../db/posts";
+import { listPosts, updateScheduledPostContent } from "../db/posts";
 import { getLatestMetricsForPost } from "../db/metrics";
 import { recordManualMetrics } from "../analytics/collector";
 import { compileDailyReport } from "../reports/dailyReport";
@@ -76,6 +76,25 @@ export function createServer() {
     const { impressions, likes, comments, reposts, clicks } = req.body ?? {};
     recordManualMetrics(postId, { impressions, likes, comments, reposts, clicks });
     res.json({ ok: true, metrics: getLatestMetricsForPost(postId) });
+  });
+
+  app.patch("/api/posts/:id", (req, res) => {
+    const postId = Number(req.params.id);
+    if (!Number.isInteger(postId)) {
+      res.status(400).json({ error: "invalid post id" });
+      return;
+    }
+    const { content } = req.body ?? {};
+    if (typeof content !== "string" || content.trim().length === 0) {
+      res.status(400).json({ error: "content must be a non-empty string" });
+      return;
+    }
+    const updated = updateScheduledPostContent(postId, content);
+    if (!updated) {
+      res.status(404).json({ error: "post not found, or not in 'scheduled' status (already posted content can't be edited)" });
+      return;
+    }
+    res.json({ ok: true });
   });
 
   app.post("/api/scheduler/refill", async (_req, res) => {

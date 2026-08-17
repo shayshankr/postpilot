@@ -46,6 +46,12 @@ export function reschedulePost(id: number, newScheduledForIso: string) {
   db.prepare(`UPDATE posts SET scheduled_for = ? WHERE id = ?`).run(newScheduledForIso, id);
 }
 
+/** Only allowed on posts still in 'scheduled' status — a posted post's content is already live. */
+export function updateScheduledPostContent(id: number, content: string): boolean {
+  const info = db.prepare(`UPDATE posts SET content = ? WHERE id = ? AND status = 'scheduled'`).run(content, id);
+  return info.changes > 0;
+}
+
 export function getDuePosts(nowIso: string): PostRecord[] {
   const rows = db
     .prepare(`SELECT * FROM posts WHERE status = 'scheduled' AND scheduled_for <= ? ORDER BY scheduled_for ASC`)
