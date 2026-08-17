@@ -7,7 +7,7 @@ import { listPosts } from "../db/posts";
 import { getLatestMetricsForPost } from "../db/metrics";
 import { recordManualMetrics } from "../analytics/collector";
 import { compileDailyReport } from "../reports/dailyReport";
-import { refillContentQueue } from "../scheduler/scheduler";
+import { refillContentQueue, dedupeScheduledSlots } from "../scheduler/scheduler";
 
 const pendingStates = new Set<string>();
 
@@ -85,6 +85,11 @@ export function createServer() {
     } catch (err: any) {
       res.status(500).json({ error: err?.message ?? String(err) });
     }
+  });
+
+  app.post("/api/scheduler/dedupe", (_req, res) => {
+    const result = dedupeScheduledSlots();
+    res.json({ ok: true, ...result });
   });
 
   app.post("/api/reports/run", async (_req, res) => {

@@ -35,6 +35,17 @@ export function countUpcomingScheduled(): number {
   return row.c;
 }
 
+export function getUpcomingScheduledTimes(): Set<string> {
+  const rows = db
+    .prepare(`SELECT scheduled_for FROM posts WHERE status = 'scheduled' AND scheduled_for > datetime('now')`)
+    .all() as any[];
+  return new Set(rows.map((r) => r.scheduled_for));
+}
+
+export function reschedulePost(id: number, newScheduledForIso: string) {
+  db.prepare(`UPDATE posts SET scheduled_for = ? WHERE id = ?`).run(newScheduledForIso, id);
+}
+
 export function getDuePosts(nowIso: string): PostRecord[] {
   const rows = db
     .prepare(`SELECT * FROM posts WHERE status = 'scheduled' AND scheduled_for <= ? ORDER BY scheduled_for ASC`)

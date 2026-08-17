@@ -1,7 +1,16 @@
 import cron from "node-cron";
 import { config } from "../config";
 import { generatePost } from "../content/generator";
-import { createPost, countUpcomingScheduled, getDuePosts, markPosted, markFailed } from "../db/posts";
+import {
+  createPost,
+  countUpcomingScheduled,
+  getUpcomingScheduledTimes,
+  getDuePosts,
+  markPosted,
+  markFailed,
+  listPosts,
+  reschedulePost,
+} from "../db/posts";
 import { linkedinAdapter } from "../linkedin/linkedinAdapter";
 import { getLinkedInToken } from "../db/tokens";
 import { compileDailyReport } from "../reports/dailyReport";
@@ -11,7 +20,10 @@ function isWeekday(d: Date): boolean {
   return day >= 1 && day <= 5;
 }
 
-function nextSlots(count: number): Date[] {
+// occupied holds ISO timestamps already claimed by a scheduled post (mutated as slots
+// are handed out within a single call, so callers generating many slots at once never
+// collide with each other either).
+function nextSlots(count: number, occupied: Set<string>): Date[] {
   const slots: Date[] = [];
   const cursor = new Date();
   cursor.setSeconds(0, 0);
@@ -26,6 +38,9 @@ function nextSlots(count: number): Date[] {
       const slot = new Date(day);
       slot.setHours(hh, mm, 0, 0);
       if (slot.getTime() <= Date.now()) continue;
+      const iso = slot.toISOString();
+      if (occupied.has(iso)) continue;
+      occupied.add(iso);
       slots.push(slot);
       if (slots.length >= count) break;
     }
@@ -39,7 +54,7 @@ export async function refillContentQueue(): Promise<{ attempted: number; queued:
   const need = desired - have;
   if (need <= 0) return { attempted: 0, queued: 0, errors: [] };
 
-  const slots = nextSlots(need);
+  const slots = nextSlots(need, getUpcomingScheduledTimes());
   console.log(`[scheduler] refilling content queue: generating ${slots.length} post(s)`);
 
   let queued = 0;
@@ -57,6 +72,32 @@ export async function refillContentQueue(): Promise<{ attempted: number; queued:
     }
   }
   return { attempted: slots.length, queued, errors };
+}
+
+/**
+ * Fixes slots double-booked by the pre-fix version of nextSlots (which didn't check
+ * for already-scheduled posts). For each timestamp with more than one scheduled post,
+ * keeps the oldest and moves the rest to the next free slot. Idempotent — a no-op once
+ * the queue is clean.
+ */
+export function dedupeScheduledSlots(): { moved: Array<{ id: number; from: string; to: string }> } {
+  const scheduled = listPosts("scheduled").sort((a, b) => a.id - b.id);
+  const occupied = new Set(scheduled.map((p) => p.scheduledFor));
+  const seen = new Set<string>();
+  const moved: Array<{ id: number; from: string; to: string }> = [];
+
+  for (const post of scheduled) {
+    if (!seen.has(post.scheduledFor)) {
+      seen.add(post.scheduledFor);
+      continue;
+    }
+    const [newSlot] = nextSlots(1, occupied);
+    if (!newSlot) continue;
+    const newIso = newSlot.toISOString();
+    reschedulePost(post.id, newIso);
+    moved.push({ id: post.id, from: post.scheduledFor, to: newIso });
+  }
+  return { moved };
 }
 
 async function publishDuePosts() {
