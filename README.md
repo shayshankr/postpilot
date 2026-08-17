@@ -25,7 +25,7 @@ If LinkedIn ever grants you Marketing API partner access, `src/linkedin/linkedin
 
 ### 1. Create a LinkedIn developer app
 
-1. Go to [developer.linkedin.com/apps](https://developer.linkedin.com/apps) → **Create app**.
+1. Go to [linkedin.com/developers/apps/new](https://www.linkedin.com/developers/apps/new) → **Create app**. (The old `developer.linkedin.com/apps` link is dead — LinkedIn moved app management under `linkedin.com/developers/apps`.)
 2. Fill in the required fields (you'll need a LinkedIn Company Page to associate it with — you can create a minimal one if you don't have one).
 3. Under **Products**, request access to:
    - **Sign In with LinkedIn using OpenID Connect**
