@@ -8,6 +8,7 @@ import { getLatestMetricsForPost } from "../db/metrics";
 import { recordManualMetrics } from "../analytics/collector";
 import { compileDailyReport } from "../reports/dailyReport";
 import { refillContentQueue, dedupeScheduledSlots } from "../scheduler/scheduler";
+import { renderDashboard } from "./dashboard";
 
 const pendingStates = new Set<string>();
 
@@ -59,6 +60,10 @@ export function createServer() {
     } catch (err: any) {
       res.status(500).send(`Token exchange failed: ${err?.message ?? err}`);
     }
+  });
+
+  app.get("/dashboard", (_req, res) => {
+    res.type("html").send(renderDashboard());
   });
 
   app.get("/api/posts", (req, res) => {
