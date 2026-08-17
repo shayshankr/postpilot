@@ -13,6 +13,5 @@ COPY package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 RUN mkdir -p /app/data
-VOLUME ["/app/data"]
 EXPOSE 8080
 CMD ["node", "dist/index.js"]
