@@ -33,24 +33,30 @@ function nextSlots(count: number): Date[] {
   return slots;
 }
 
-async function refillContentQueue() {
+export async function refillContentQueue(): Promise<{ attempted: number; queued: number; errors: string[] }> {
   const desired = config.scheduleLookaheadDays * config.postTimes.length;
   const have = countUpcomingScheduled();
   const need = desired - have;
-  if (need <= 0) return;
+  if (need <= 0) return { attempted: 0, queued: 0, errors: [] };
 
   const slots = nextSlots(need);
   console.log(`[scheduler] refilling content queue: generating ${slots.length} post(s)`);
 
+  let queued = 0;
+  const errors: string[] = [];
   for (const slot of slots) {
     try {
       const { pillar, content } = await generatePost();
       createPost({ pillar, content, scheduledFor: slot.toISOString() });
       console.log(`[scheduler] queued post for ${slot.toISOString()} (pillar: ${pillar})`);
+      queued++;
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       console.error("[scheduler] content generation failed:", err);
+      errors.push(message);
     }
   }
+  return { attempted: slots.length, queued, errors };
 }
 
 async function publishDuePosts() {
