@@ -35,7 +35,7 @@ export const config = {
 
   contentPillars: optional(
     "CONTENT_PILLARS",
-    "career journey and job search,Android/Kotlin development,psychrometrics and HVAC engineering,build-in-public project updates"
+    "Forward-Deployed Engineering and AI integrations at Eko,Android/Kotlin development,psychrometrics and HVAC engineering,build-in-public project updates"
   )
     .split(",")
     .map((s) => s.trim())
