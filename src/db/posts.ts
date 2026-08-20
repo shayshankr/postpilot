@@ -103,6 +103,15 @@ export function getRecentPostsForContext(limit = 15): PostRecord[] {
   return rows.map(rowToPost);
 }
 
+/** Pillars of the most recently created posts (posted or scheduled), newest first. Used to
+ * stop the same pillar from clustering across consecutive slots. */
+export function getRecentPillars(limit: number): string[] {
+  const rows = db
+    .prepare(`SELECT pillar FROM posts WHERE status IN ('posted','scheduled') ORDER BY created_at DESC LIMIT ?`)
+    .all(limit) as Array<{ pillar: string }>;
+  return rows.map((r) => r.pillar);
+}
+
 export function listPosts(status?: PostStatus): PostRecord[] {
   const rows = status
     ? db.prepare(`SELECT * FROM posts WHERE status = ? ORDER BY scheduled_for DESC`).all(status)
