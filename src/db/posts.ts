@@ -96,6 +96,24 @@ export function getAllPosted(): PostRecord[] {
   return rows.map(rowToPost);
 }
 
+/** Posted posts with no metrics recorded yet, old enough that LinkedIn's impression count
+ * has had time to settle, but not so old that asking is pointless (default 7-day cutoff so
+ * the nudge doesn't keep re-asking about something from weeks ago). */
+export function getPostsAwaitingMetrics(minAgeHours: number, maxAgeDays = 7): PostRecord[] {
+  const rows = db
+    .prepare(
+      `SELECT p.* FROM posts p
+       LEFT JOIN post_metrics m ON m.post_id = p.id
+       WHERE p.status = 'posted'
+       AND m.post_id IS NULL
+       AND p.posted_at <= datetime('now', '-' || ? || ' hours')
+       AND p.posted_at >= datetime('now', '-' || ? || ' days')
+       ORDER BY p.posted_at ASC`
+    )
+    .all(minAgeHours, maxAgeDays);
+  return rows.map(rowToPost);
+}
+
 export function getRecentPostsForContext(limit = 15): PostRecord[] {
   const rows = db
     .prepare(`SELECT * FROM posts WHERE status IN ('posted','scheduled') ORDER BY created_at DESC LIMIT ?`)

@@ -9,6 +9,7 @@ import { recordManualMetrics } from "../analytics/collector";
 import { compileDailyReport } from "../reports/dailyReport";
 import { refillContentQueue, dedupeScheduledSlots } from "../scheduler/scheduler";
 import { renderDashboard } from "./dashboard";
+import { handleIncomingMessage } from "../telegram/telegramBot";
 
 const pendingStates = new Set<string>();
 
@@ -89,6 +90,23 @@ export function createServer() {
       });
     }
     res.redirect("/dashboard");
+  });
+
+  // Telegram webhook. The bot token is embedded in the path (Telegram's own recommended
+  // pattern) so the URL itself isn't guessable; handleIncomingMessage additionally checks
+  // the sender's chat_id against TELEGRAM_CHAT_ID before recording anything.
+  app.post(`/telegram/webhook/${config.telegram.botToken}`, async (req, res) => {
+    try {
+      const message = req.body?.message;
+      const chatId = message?.chat?.id;
+      const text = message?.text;
+      if (chatId !== undefined && typeof text === "string") {
+        await handleIncomingMessage(chatId, text);
+      }
+    } catch (err) {
+      console.error("[telegram] webhook handling failed:", err);
+    }
+    res.sendStatus(200); // Telegram expects a fast 200 regardless of processing outcome
   });
 
   app.get("/api/posts", (req, res) => {

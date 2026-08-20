@@ -43,6 +43,16 @@ export const config = {
 
   reportChannel: optional("REPORT_CHANNEL", "file") as "console" | "file",
 
+  telegram: {
+    botToken: optional("TELEGRAM_BOT_TOKEN", ""),
+    chatId: optional("TELEGRAM_CHAT_ID", ""),
+  },
+  metricsNudgeHour: parseInt(optional("METRICS_NUDGE_HOUR", "20"), 10),
+  // A post needs to have been live at least this long before we ask for its numbers —
+  // LinkedIn impressions are still climbing in the first day, so asking too early just
+  // means re-asking later anyway.
+  metricsNudgeMinAgeHours: parseInt(optional("METRICS_NUDGE_MIN_AGE_HOURS", "20"), 10),
+
   dbPath: path.join(__dirname, "..", "data", "autopilot.db"),
   reportsDir: path.join(__dirname, "..", "data", "reports"),
 };

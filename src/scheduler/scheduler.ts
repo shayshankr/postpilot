@@ -15,6 +15,7 @@ import {
 import { linkedinAdapter } from "../linkedin/linkedinAdapter";
 import { getLinkedInToken } from "../db/tokens";
 import { compileDailyReport } from "../reports/dailyReport";
+import { sendDailyMetricsNudge } from "../telegram/telegramBot";
 
 function isWeekday(d: Date): boolean {
   const day = d.getDay();
@@ -146,6 +147,9 @@ export function startScheduler() {
 
   // Compile the daily performance report.
   cron.schedule(`0 ${config.reportHour} * * *`, () => compileDailyReport());
+
+  // Ask (via Telegram) for real numbers on posts old enough to have them but not yet recorded.
+  cron.schedule(`0 ${config.metricsNudgeHour} * * *`, () => sendDailyMetricsNudge());
 
   console.log("[scheduler] started");
 }
