@@ -97,14 +97,23 @@ export async function handleIncomingMessage(fromChatId: string | number, text: s
   }
 
   const confirmed: string[] = [];
+  const rejected: string[] = [];
   for (const p of parsed) {
-    recordManualMetrics(p.postId, {
+    const saved = recordManualMetrics(p.postId, {
       impressions: p.impressions,
       likes: p.likes,
       comments: p.comments,
       reposts: p.reposts,
     });
-    confirmed.push(`#${p.postId}: ${p.impressions} impressions, ${p.likes} likes, ${p.comments} comments, ${p.reposts} reposts — saved.`);
+    if (saved) {
+      confirmed.push(`#${p.postId}: ${p.impressions} impressions, ${p.likes} likes, ${p.comments} comments, ${p.reposts} reposts — saved.`);
+    } else {
+      rejected.push(`#${p.postId}: no post with that id — check the number and resend just that line.`);
+    }
   }
-  await sendMessage(`✅ Recorded:\n${confirmed.join("\n")}`);
+
+  const parts: string[] = [];
+  if (confirmed.length) parts.push(`✅ Recorded:\n${confirmed.join("\n")}`);
+  if (rejected.length) parts.push(`⚠️ Not saved:\n${rejected.join("\n")}`);
+  await sendMessage(parts.join("\n\n"));
 }

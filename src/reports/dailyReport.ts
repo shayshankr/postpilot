@@ -8,7 +8,6 @@ import { collectApiMetrics } from "../analytics/collector";
 import { getTokenExpiryStatus } from "../db/tokens";
 
 const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
-const REPORT_MODEL = process.env.CONTENT_MODEL || "claude-opus-5";
 
 function startOfDay(d: Date): Date {
   const x = new Date(d);
@@ -57,7 +56,7 @@ export async function compileDailyReport(forDate: Date = new Date()): Promise<st
   let narrative: string;
   try {
     const message = await anthropic.messages.create({
-      model: REPORT_MODEL,
+      model: config.contentModel,
       max_tokens: 512,
       system:
         "You write a short, blunt daily performance digest for one person's LinkedIn posting automation. No fluff, no 'great job today!' cheerleading. State what happened and what it implies for tomorrow's content mix.",

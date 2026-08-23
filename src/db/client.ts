@@ -8,6 +8,7 @@ fs.mkdirSync(config.reportsDir, { recursive: true });
 
 export const db = new Database(config.dbPath);
 db.pragma("journal_mode = WAL");
+db.pragma("foreign_keys = ON");
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS posts (

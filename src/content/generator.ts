@@ -6,8 +6,6 @@ import { pickNextPillar } from "./topics";
 
 const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
 
-const CONTENT_MODEL = process.env.CONTENT_MODEL || "claude-opus-5";
-
 function buildSystemPrompt(): string {
   return `You write LinkedIn posts for Shayshank Rathore, a Forward-Deployed Engineer (AI Integrations) at Eko, a fintech company in India, where he works on Eko's Kiosk product, EPS API/AI-agent integrations, and CSP recruitment/growth work. He also independently builds and ships side projects (a psychrometric chart Android app, an Irish visa tracker and related apps). He is NOT currently job hunting — do not write posts implying he is unemployed, "between roles," or actively searching. His past job search (before joining Eko) is valid material only as a finished, past-tense story, never as his present situation.
 
@@ -70,7 +68,7 @@ Constraints:
 export async function generatePost(): Promise<{ pillar: string; content: string }> {
   const pillar = pickNextPillar();
   const message = await anthropic.messages.create({
-    model: CONTENT_MODEL,
+    model: config.contentModel,
     max_tokens: 1024,
     system: buildSystemPrompt(),
     messages: [{ role: "user", content: buildUserPrompt(pillar) }],

@@ -106,7 +106,7 @@ src/
     dashboard.ts               server-rendered HTML view at /dashboard
 ```
 
-See [ROADMAP.md](ROADMAP.md) for what's not built yet, and [BUILD_LOG.md](BUILD_LOG.md) for how this was actually built and what broke along the way.
+See [ROADMAP.md](ROADMAP.md) for what's not built yet, [BUILD_LOG.md](BUILD_LOG.md) for how this was actually built and what broke along the way, and [CODE_REVIEW.md](CODE_REVIEW.md) for the most recent review pass (real bugs found and fixed: no FK enforcement on metrics writes, an unsafe Telegram route fallback, inconsistent input coercion).
 
 ## Note on autonomy
 

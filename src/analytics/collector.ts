@@ -1,6 +1,6 @@
 import { linkedinAdapter } from "../linkedin/linkedinAdapter";
 import { getLinkedInToken } from "../db/tokens";
-import { getAllPosted } from "../db/posts";
+import { getAllPosted, getPost } from "../db/posts";
 import { recordMetrics, getLatestMetricsForPost } from "../db/metrics";
 import { computeScore } from "./scorer";
 
@@ -31,14 +31,23 @@ export async function collectApiMetrics() {
   }
 }
 
-/** Called by the dashboard API when the user pastes in numbers from the LinkedIn app. */
+/**
+ * Called by the dashboard, the JSON API, and the Telegram bot when real numbers come in.
+ * Returns false (and records nothing) if postId doesn't match a real post — e.g. a typo
+ * in a Telegram reply — rather than silently inserting an orphaned metrics row. The DB
+ * also enforces this at the schema level (foreign_keys pragma) as a second line of
+ * defense, but checking here gives every caller a clean boolean instead of a thrown
+ * SQL exception to handle.
+ */
 export function recordManualMetrics(postId: number, m: {
   impressions?: number | null;
   likes?: number | null;
   comments?: number | null;
   reposts?: number | null;
   clicks?: number | null;
-}) {
+}): boolean {
+  if (!getPost(postId)) return false;
+
   recordMetrics({
     postId,
     impressions: m.impressions ?? null,
@@ -49,4 +58,5 @@ export function recordManualMetrics(postId: number, m: {
     score: computeScore(m),
     source: "manual",
   });
+  return true;
 }

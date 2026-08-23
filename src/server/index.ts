@@ -13,6 +13,12 @@ import { handleIncomingMessage } from "../telegram/telegramBot";
 
 const pendingStates = new Set<string>();
 
+function toNumOrNull(v: unknown): number | null {
+  if (v === undefined || v === null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function createServer() {
   const app = express();
   app.use(express.json());
@@ -79,35 +85,41 @@ export function createServer() {
   app.post("/dashboard/posts/:id/metrics", (req, res) => {
     const postId = Number(req.params.id);
     if (Number.isInteger(postId)) {
-      const toNum = (v: unknown) => (v === undefined || v === "" ? null : Number(v));
       const { impressions, likes, comments, reposts, clicks } = req.body ?? {};
       recordManualMetrics(postId, {
-        impressions: toNum(impressions),
-        likes: toNum(likes),
-        comments: toNum(comments),
-        reposts: toNum(reposts),
-        clicks: toNum(clicks),
+        impressions: toNumOrNull(impressions),
+        likes: toNumOrNull(likes),
+        comments: toNumOrNull(comments),
+        reposts: toNumOrNull(reposts),
+        clicks: toNumOrNull(clicks),
       });
+      // Dashboard forms have no error-display surface yet — an unknown post id just
+      // fails to save and the page reloads unchanged, rather than throwing a 500/404.
     }
     res.redirect("/dashboard");
   });
 
-  // Telegram webhook. The bot token is embedded in the path (Telegram's own recommended
-  // pattern) so the URL itself isn't guessable; handleIncomingMessage additionally checks
-  // the sender's chat_id against TELEGRAM_CHAT_ID before recording anything.
-  app.post(`/telegram/webhook/${config.telegram.botToken}`, async (req, res) => {
-    try {
-      const message = req.body?.message;
-      const chatId = message?.chat?.id;
-      const text = message?.text;
-      if (chatId !== undefined && typeof text === "string") {
-        await handleIncomingMessage(chatId, text);
+  // Telegram webhook. Route only exists at all when a bot token is configured — this
+  // avoids the degenerate case of a POST /telegram/webhook/ (no trailing token) matching
+  // when TELEGRAM_BOT_TOKEN is unset. The token is embedded in the path (Telegram's own
+  // recommended pattern) so the URL itself isn't guessable; handleIncomingMessage
+  // additionally checks the sender's chat_id against TELEGRAM_CHAT_ID before recording
+  // anything, so a leaked URL still can't be used to inject fake metrics.
+  if (config.telegram.botToken) {
+    app.post(`/telegram/webhook/${config.telegram.botToken}`, async (req, res) => {
+      try {
+        const message = req.body?.message;
+        const chatId = message?.chat?.id;
+        const text = message?.text;
+        if (chatId !== undefined && typeof text === "string") {
+          await handleIncomingMessage(chatId, text);
+        }
+      } catch (err) {
+        console.error("[telegram] webhook handling failed:", err);
       }
-    } catch (err) {
-      console.error("[telegram] webhook handling failed:", err);
-    }
-    res.sendStatus(200); // Telegram expects a fast 200 regardless of processing outcome
-  });
+      res.sendStatus(200); // Telegram expects a fast 200 regardless of processing outcome
+    });
+  }
 
   app.get("/api/posts", (req, res) => {
     const status = req.query.status as any;
@@ -122,7 +134,17 @@ export function createServer() {
       return;
     }
     const { impressions, likes, comments, reposts, clicks } = req.body ?? {};
-    recordManualMetrics(postId, { impressions, likes, comments, reposts, clicks });
+    const saved = recordManualMetrics(postId, {
+      impressions: toNumOrNull(impressions),
+      likes: toNumOrNull(likes),
+      comments: toNumOrNull(comments),
+      reposts: toNumOrNull(reposts),
+      clicks: toNumOrNull(clicks),
+    });
+    if (!saved) {
+      res.status(404).json({ error: `no post with id ${postId}` });
+      return;
+    }
     res.json({ ok: true, metrics: getLatestMetricsForPost(postId) });
   });
 
