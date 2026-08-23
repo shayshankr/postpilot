@@ -1,6 +1,7 @@
 import { listPosts } from "../db/posts";
 import { getLatestMetricsForPost } from "../db/metrics";
 import { getTokenExpiryStatus } from "../db/tokens";
+import { config } from "../config";
 import { PostRecord } from "../types";
 
 function escapeHtml(s: string): string {
@@ -100,6 +101,7 @@ export function renderDashboard(): string {
   .banner { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin: 14px 0; }
   .banner-warn { background: #fff4e5; border: 1px solid #f0c36d; color: #7a4a00; }
   .banner-warn a { color: #7a4a00; font-weight: 600; }
+  .banner-paused { background: #fdeaea; border: 1px solid #e6a3a3; color: #8a1f1f; font-weight: 600; }
   .card { background: #fff; border: 1px solid #e2e2e0; border-radius: 8px; padding: 14px 16px; margin: 12px 0; }
   .card-meta { display: flex; gap: 10px; align-items: center; font-size: 12px; color: #888; margin-bottom: 8px; flex-wrap: wrap; }
   .pillar { background: #eef1ff; color: #3b4fcc; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
@@ -123,6 +125,7 @@ export function renderDashboard(): string {
   <h1>PostPilot</h1>
   <a class="refresh" href="/dashboard">refresh</a>
 
+  ${config.postingPaused ? `<div class="banner banner-paused">⏸ Posting is paused (POSTING_PAUSED=true). Nothing will be generated or published until this is turned back off.</div>` : ""}
   ${tokenBanner}
 
   <h2>Scheduled (${scheduled.length})</h2>

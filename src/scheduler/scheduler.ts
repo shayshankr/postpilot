@@ -51,6 +51,11 @@ function nextSlots(count: number, occupied: Set<string>): Date[] {
 }
 
 export async function refillContentQueue(): Promise<{ attempted: number; queued: number; errors: string[] }> {
+  if (config.postingPaused) {
+    console.log("[scheduler] POSTING_PAUSED is true — skipping content generation");
+    return { attempted: 0, queued: 0, errors: [] };
+  }
+
   const desired = config.scheduleLookaheadDays * config.postTimes.length;
   const have = countUpcomingScheduled();
   const need = desired - have;
@@ -110,6 +115,8 @@ export function dedupeScheduledSlots(): { moved: Array<{ id: number; from: strin
 const MAX_PUBLISH_ATTEMPTS = 3;
 
 async function publishDuePosts() {
+  if (config.postingPaused) return;
+
   const due = getDuePosts(new Date().toISOString());
   if (due.length === 0) return;
 

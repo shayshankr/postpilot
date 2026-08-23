@@ -43,6 +43,11 @@ export const config = {
 
   reportChannel: optional("REPORT_CHANNEL", "file") as "console" | "file",
 
+  // Kill switch: when true, the scheduler neither generates new content nor publishes
+  // anything due, but keeps running (reports/nudges still fire). Flip back to "false"
+  // (or unset) and redeploy to resume.
+  postingPaused: optional("POSTING_PAUSED", "false").toLowerCase() === "true",
+
   telegram: {
     botToken: optional("TELEGRAM_BOT_TOKEN", ""),
     chatId: optional("TELEGRAM_CHAT_ID", ""),
